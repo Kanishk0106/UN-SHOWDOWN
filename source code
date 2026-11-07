@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<title>Diplomatic Immunity — MVP</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+<style>
+html,body{margin:0;padding:0;height:100%;background:#070b14;overflow:hidden;position:fixed;inset:0;touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+#game{position:fixed;inset:0;}
+canvas{display:block;}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script>
+var W=960,H=540,GROUND=452;
+var FACTS=[
+ 'Aug 2017: the real US president warned North Korea of "fire and fury like the world has never seen."',
+ 'Sept 2017: at the UN he called Kim Jong Un "Rocket Man"; Kim replied by calling him "a mentally deranged US dotard."',
+ 'Satire, not news: all fighters are parodies. The real stories live in the fact-check codex.'
+];
+var CHARS={
+ taau:{name:'TARIFF TAAU',suit:0x2f4b8f,tie:0xd42b2b,skin:0xf0c08a,hair:'taau',speed:215,range:52,pdmg:6,special:'papers',sdmg:8},
+ rocket:{name:'ROCKET MARSHAL',suit:0x3a3f4b,tie:0xc9a227,skin:0xe8b88a,hair:'rocket',speed:195,range:50,pdmg:7,special:'missile',sdmg:12}
+};
+
+function drawBust(g,x,y,s,cfg){
+ g.save();g.translateCanvas(x,y);g.scaleCanvas(s,s);
+ g.fillStyle(cfg.suit,1);g.fillRect(-26,-10,52,46);
+ g.fillStyle(cfg.tie,1);g.fillRect(-4,-10,8,30);
+ g.fillStyle(cfg.skin,1);g.fillCircle(0,-34,20);
+ if(cfg.hair==='taau'){g.fillStyle(0xffd23f,1);g.fillRect(-21,-56,42,14);g.fillRect(6,-66,18,16);}
+ else{g.fillStyle(0x14161a,1);g.fillRect(-21,-57,42,12);}
+ g.fillStyle(0x14161a,1);g.fillCircle(-7,-36,2.5);g.fillCircle(7,-36,2.5);
+ g.restore();
+}
+
+class TitleScene extends Phaser.Scene{
+ constructor(){super({key:'title'});}
+ create(){
+  var g=this.add.graphics();
+  g.fillGradientStyle(0x081428,0x081428,0x123055,0x123055,1);g.fillRect(0,0,W,H);
+  g.fillStyle(0xffffff,0.05);
+  g.fillTriangle(120,-10,20,H,340,H);
+  g.fillTriangle(840,-10,620,H,940,H);
+  var cols=[0xd42b2b,0xf5f5f0,0x2f6fd4,0xffd166],i;
+  for(i=0;i<16;i++){g.fillStyle(cols[i%4],0.9);g.fillTriangle(20+i*60,34,68+i*60,34,44+i*60,72);}
+  for(i=0;i<15;i++){g.fillStyle(cols[(i+2)%4],0.65);g.fillTriangle(50+i*60,78,98+i*60,78,74+i*60,108);}
+  g.fillStyle(0x0d1b2e,1);g.fillEllipse(480,530,920,130);
+  g.fillStyle(0x12233d,1);g.fillEllipse(480,500,640,90);
+  drawBust(g,268,330,1.7,CHARS.taau);
+  drawBust(g,692,330,1.7,CHARS.rocket);
+  g.fillStyle(0xffd166,1);g.fillCircle(480,322,46);
+  g.lineStyle(4,0x8a6d1a,1);g.strokeCircle(480,322,46);
+  var vs=this.add.text(480,322,'VS',{fontSize:'38px',color:'#12233d',fontStyle:'bold'}).setOrigin(0.5);
+  this.add.text(480,96,'DIPLOMATIC IMMUNITY',{fontSize:'46px',color:'#ffffff',fontStyle:'bold'}).setOrigin(0.5);
+  g.fillStyle(0xffd166,1);g.fillRect(400,124,160,4);
+  this.add.text(480,150,'a world-politics satire fighter',{fontSize:'18px',color:'#9fb6d4'}).setOrigin(0.5);
+  this.add.text(268,410,CHARS.taau.name,{fontSize:'16px',color:'#ffffff',fontStyle:'bold'}).setOrigin(0.5);
+  this.add.text(268,432,'USA · zoner · projectile',{fontSize:'12px',color:'#9fb6d4'}).setOrigin(0.5);
+  this.add.text(692,410,CHARS.rocket.name,{fontSize:'16px',color:'#ffffff',fontStyle:'bold'}).setOrigin(0.5);
+  this.add.text(692,432,'DPRK · heavy · big buttons',{fontSize:'12px',color:'#9fb6d4'}).setOrigin(0.5);
+  var chips=['Best of 3 election cycles','Hype = super','Fact check after every fight'];
+  for(i=0;i<chips.length;i++){
+   var tw=chips[i].length*7+28;
+   var cx=480+(i-1)*(tw+14)-((i-1)*10);
+   g.fillStyle(0xffffff,0.08);g.fillRoundedRect(cx-tw/2,456,tw,24,12);
+   g.lineStyle(1,0xffffff,0.25);g.strokeRoundedRect(cx-tw/2,456,tw,24,12);
+   this.add.text(cx,468,chips[i],{fontSize:'12px',color:'#c9d6e8'}).setOrigin(0.5);
+  }
+  var prompt=this.add.text(480,506,'TAP TO START',{fontSize:'20px',color:'#ffd166',fontStyle:'bold'}).setOrigin(0.5);
+  this.tweens.add({targets:prompt,alpha:0.25,duration:650,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+  var disc='Parody game for satire and education · not affiliated with any leader, party or government · cartoon violence only';
+  this.add.text(480,532,disc,{fontSize:'10px',color:'#5c6b82'}).setOrigin(0.5);
+  var isTouch=this.sys.game.device.input.touch;
+  if(isTouch){this.add.text(480,378,'You are P1 (left) · vs AI · touch buttons below',{fontSize:'12px',color:'#7f93ad'}).setOrigin(0.5);}
+  else{this.add.text(480,378,'P1: A/D move · W jump · J punch · K special · L super  —  P2: arrows + 1/2/3  ·  T toggles AI',{fontSize:'12px',color:'#7f93ad'}).setOrigin(0.5);}
+  var go=function(){this.scene.start('fight');};
+  this.input.once('pointerdown',go,this);
+  this.input.keyboard.once('keydown-ENTER',go,this);
+ }
+}
+
+class FightScene extends Phaser.Scene{
+ constructor(){super({key:'fight'});}
+ create(){
+  this.drawStage();
+  var K=Phaser.Input.Keyboard.KeyCodes;
+  this.keys=this.input.keyboard.addKeys('A,D,W,J,K,L,T');
+  this.cursors=this.input.keyboard.createCursorKeys();
+  this.kp=this.input.keyboard.addKey(K.ONE);
+  this.ks=this.input.keyboard.addKey(K.TWO);
+  this.ku=this.input.keyboard.addKey(K.THREE);
+  this.isTouch=this.sys.game.device.input.touch;
+  this.aiOn=this.isTouch;
+  this.aiT=0.5;
+  this.aiMove={l:false,r:false,u:false};
+  this.tL=false;this.tR=false;this.tU=false;
+  this.f1=this.mkF(CHARS.taau,220,1);
+  this.f2=this.mkF(CHARS.rocket,740,-1);
+  this.projs=[];this.missiles=[];
+  this.round=1;this.tHeld=false;
+  this.pg=this.add.graphics().setDepth(5);
+  this.hud=this.add.graphics().setDepth(8);
+  this.add.text(38,6,'P1 · '+CHARS.taau.name,{fontSize:'12px',color:'#ffffff'}).setDepth(8);
+  this.add.text(922,6,'P2 · '+CHARS.rocket.name,{fontSize:'12px',color:'#ffffff'}).setOrigin(1,0).setDepth(8);
+  this.bText=this.add.text(W/2,185,'',{fontSize:'40px',color:'#ffffff',fontStyle:'bold'}).setOrigin(0.5).setDepth(10);
+  this.bText.setStroke('#0a1522',8);
+  this.sText=this.add.text(W/2,232,'',{fontSize:'16px',color:'#ffd166'}).setOrigin(0.5).setDepth(10);
+  this.sText.setStroke('#0a1522',5);
+  this.buildTouchUI();
+  this.startRound();
+ }
+ btn(x,y,label,down,up,small){
+  var self=this;
+  var c=this.add.container(x,y).setDepth(20);
+  var g=this.add.graphics();
+  var r=small?22:32;
+  g.fillStyle(0xffffff,0.16);g.fillCircle(0,0,r);
+  g.lineStyle(2,0xffffff,0.4);g.strokeCircle(0,0,r);
+  var t=this.add.text(0,0,label,{fontSize:small?11:14,color:'#ffffff',fontStyle:'bold'}).setOrigin(0.5);
+  c.add([g,t]);c.setSize(r*2,r*2);c.setInteractive();
+  if(up){
+   c.on('pointerdown',function(p){p.event.preventDefault();down();});
+   c.on('pointerup',function(){up();});
+   c.on('pointerout',function(){up();});
+  }else{
+   c.on('pointerdown',function(p){p.event.preventDefault();down();});
+  }
+  return c;
+ }
+ buildTouchUI(){
+  if(!this.isTouch)return;
+  var self=this;
+  this.btn(66,H-62,'<',function(){self.tL=true;},function(){self.tL=false;});
+  this.btn(146,H-62,'>',function(){self.tR=true;},function(){self.tR=false;});
+  this.btn(106,H-136,'^',function(){self.tU=true;},function(){self.tU=false;});
+  this.btn(W-176,H-62,'PUNCH',function(){self.doPunch(self.f1);});
+  this.btn(W-76,H-62,'SPEC',function(){self.doSpecial(self.f1);});
+  this.btn(W-126,H-146,'SUPER',function(){self.doSuper(self.f1);});
+  this.aiBtn=this.btn(W-56,26,'AI',function(){self.toggleAI();},null,true);
+ }
+ toggleAI(){
+  this.aiOn=!this.aiOn;
+  this.flash('P2 AI: '+(this.aiOn?'ON':'OFF'));
+ }
+ drawStage(){
+  var g=this.add.graphics();
+  g.fillGradientStyle(0x16324f,0x16324f,0x0a1522,0x0a1522,1);g.fillRect(0,0,W,H);
+  g.fillStyle(0x24466e,1);g.fillRect(0,150,W,220);
+  g.fillStyle(0xf5f5f0,1);g.fillRect(330,175,300,64);
+  g.fillStyle(0x24466e,1);g.fillRect(334,179,292,56);
+  this.add.text(480,208,'UN GENERAL ASSEMBLY',{fontSize:'18px',color:'#f5f5f0'}).setOrigin(0.5);
+  var cols=[0xb31942,0xf5f5f0,0x0055a4];
+  for(var i=0;i<12;i++){g.fillStyle(cols[i%3],1);g.fillRect(60+i*72,242,20,54);}
+  g.fillStyle(0x666666,1);g.fillRect(455,300,50,GROUND-300);
+  g.fillStyle(0x5a4632,1);g.fillRect(0,GROUND,W,H-GROUND);
+  g.fillStyle(0x3d2f22,1);g.fillRect(0,GROUND,W,8);
+ }
+ mkF(cfg,x,face){
+  var f={cfg:cfg,x:x,y:GROUND,vx:0,vy:0,face:face,hp:100,hype:0,onGround:true,state:'idle',t:0,cd:0,inv:0,hitT:0,rounds:0};
+  f.c=this.add.container(x,GROUND);
+  f.g=this.add.graphics();
+  f.c.add(f.g);
+  this.drawF(f);
+  return f;
+ }
+ drawF(f){
+  var g=f.g,c=f.cfg;
+  g.clear();
+  g.fillStyle(0x22252b,1);g.fillRect(-12,-40,9,40);g.fillRect(3,-40,9,40);
+  g.fillStyle(c.suit,1);g.fillRect(-16,-86,32,48);
+  g.fillStyle(c.tie,1);g.fillRect(-3,-84,6,26);
+  g.fillStyle(c.suit,1);g.fillRect(-25,-84,9,26);g.fillRect(16,-84,9,26);
+  g.fillStyle(c.skin,1);g.fillCircle(0,-100,15);
+  if(c.hair==='taau'){g.fillStyle(0xffd23f,1);g.fillRect(-16,-118,32,10);g.fillRect(4,-128,16,12);}
+  else{g.fillStyle(0x14161a,1);g.fillRect(-16,-119,32,9);}
+  g.fillStyle(0x14161a,1);g.fillCircle(-5,-102,2);g.fillCircle(5,-102,2);
+  if(f.state==='punch'){
+   g.fillStyle(c.suit,1);g.fillRect(14,-82,30,9);
+   g.fillStyle(c.skin,1);g.fillCircle(46,-77,6);
+  }
+  if(f.state==='dash'){
+   g.fillStyle(0xff7733,1);g.fillTriangle(-14,-30,-2,-30,-8,-6);
+   g.fillStyle(0x8a8f99,1);g.fillRect(-6,-70,26,12);
+  }
+  f.c.setScale(f.face,1);
+ }
+ other(f){return f===this.f1?this.f2:this.f1;}
+ startRound(){
+  this.state='intro';
+  this.showBanner('ELECTION CYCLE '+this.round,'First to win 2 cycles takes the summit.');
+  this.time.delayedCall(1400,function(){if(this.state==='intro'){this.state='fight';this.bText.setText('');this.sText.setText('');}},[],this);
+ }
+ showBanner(big,small){this.bText.setText(big);this.sText.setText(small);}
+ flash(text){
+  this.sText.setText(text);
+  this.time.delayedCall(900,function(){this.sText.setText('');},[],this);
+ }
+ handleButtons(f,p,s,sp){
+  if(Phaser.Input.Keyboard.JustDown(p))this.doPunch(f);
+  if(Phaser.Input.Keyboard.JustDown(s))this.doSpecial(f);
+  if(Phaser.Input.Keyboard.JustDown(sp))this.doSuper(f);
+ }
+ doPunch(f){
+  if(f.cd>0||f.state==='dash'||f.hp<=0)return;
+  f.state='punch';f.t=0.22;f.cd=0.42;
+  f.vx=f.face*180;
+  var o=this.other(f);
+  if(Math.abs(o.x-f.x)<f.cfg.range+18&&Math.abs(o.y-f.y)<90&&o.inv<=0){this.hit(f,o,f.cfg.pdmg,140);}
+ }
+ doSpecial(f){
+  if(f.cd>0||f.state==='dash'||f.hp<=0)return;
+  f.cd=0.85;
+  if(f.cfg.special==='papers'){
+   this.projs.push({x:f.x+f.face*26,y:f.y-70,vx:f.face*430,rot:0,dmg:f.cfg.sdmg,owner:f});
+  }else{
+   var o=this.other(f),tx=o.x,self=this;
+   this.time.delayedCall(450,function(){if(self.state==='fight')self.missiles.push({x:tx,y:-30,vy:540,dmg:f.cfg.sdmg+2,owner:f});});
+  }
+ }
+ doSuper(f){
+  if(f.hype<100||f.state==='dash'||f.hp<=0)return;
+  f.hype=0;f.cd=1.0;
+  if(f.cfg.special==='papers'){
+   for(var i=0;i<3;i++){this.projs.push({x:f.x+f.face*26,y:f.y-84+i*16,vx:f.face*(380+i*60),rot:0,dmg:10,owner:f});}
+   this.flash('FIRE & FURY!');
+  }else{
+   f.state='dash';f.t=0.42;f.vx=f.face*760;f.inv=0.45;
+   this.flash('ROCKET MAN LAUNCH!');
+  }
+ }
+ hit(f,o,dmg,kb){
+  o.hp=Math.max(0,o.hp-dmg);
+  o.vx=(o.x>f.x?1:-1)*kb;o.hitT=0.28;
+  f.hype=Math.min(100,f.hype+6);o.hype=Math.min(100,o.hype+3);
+  if(o.hp<=0)this.onKO(f,o);
+ }
+ onKO(w,l){
+  this.state='ko';
+  this.showBanner('RESIGNATION!','');
+  w.rounds++;
+  var self=this;
+  this.time.delayedCall(2200,function(){
+   if(w.rounds>=2){self.scene.start('fact',{facts:FACTS});}
+   else{
+    self.round++;
+    self.f1.hp=100;self.f2.hp=100;
+    self.f1.x=220;self.f2.x=740;self.f1.y=GROUND;self.f2.y=GROUND;
+    self.f1.vx=0;self.f2.vx=0;self.f1.vy=0;self.f2.vy=0;
+    self.f1.state='idle';self.f2.state='idle';
+    self.projs=[];self.missiles=[];
+    self.startRound();
+   }
+  });
+ }
+ aiThink(dt){
+  this.aiT-=dt;
+  var a=this.f2,o=this.f1,d=o.x-a.x;
+  this.aiMove.l=d<-70;this.aiMove.r=d>70;this.aiMove.u=false;
+  if(this.aiT<=0){
+   this.aiT=0.45+Math.random()*0.7;
+   var r=Math.random();
+   if(Math.abs(d)<62){if(r<0.5)this.doPunch(a);else if(r<0.8)this.doSpecial(a);}
+   else{if(r<0.4)this.doSpecial(a);else if(r<0.55)this.aiMove.u=true;}
+  }
+  if(a.hype>=100&&Math.abs(d)<120)this.doSuper(a);
+ }
+ stepF(f,o,dt){
+  if(f.cd>0)f.cd-=dt;
+  if(f.inv>0)f.inv-=dt;
+  if(f.hitT>0){f.hitT-=dt;f.vx*=Math.pow(0.02,dt);}
+  else if(f.state!=='dash'&&f.hp>0){f.vx=0;}
+  if(f.t>0){f.t-=dt;if(f.t<=0){if(f.state==='punch')f.state='idle';if(f.state==='dash'){f.state='idle';f.vx=0;}}}
+  f.vy+=1500*dt;
+  f.x+=f.vx*dt;f.y+=f.vy*dt;
+  if(f.y>=GROUND){f.y=GROUND;f.vy=0;f.onGround=true;}else{f.onGround=false;}
+  f.x=Phaser.Math.Clamp(f.x,40,W-40);
+  if(f.state==='dash'){
+   var dx=Math.abs(o.x-f.x),dy=Math.abs(o.y-f.y);
+   if(dx<46&&dy<90&&o.inv<=0){this.hit(f,o,24,320);f.t=0;f.state='idle';f.vx=0;}
+  }
+  f.face=(o.x>=f.x)?1:-1;
+  f.c.setPosition(f.x,f.y);
+  this.drawF(f);
+ }
+ stepProjs(dt){
+  var i,o;
+  for(i=this.projs.length-1;i>=0;i--){
+   var p=this.projs[i];p.x+=p.vx*dt;p.rot+=dt*8;
+   o=this.other(p.owner);
+   if(Math.abs(p.x-o.x)<24&&Math.abs(p.y-(o.y-70))<48&&o.inv<=0){this.hit(p.owner,o,p.dmg,150);this.projs.splice(i,1);continue;}
+   if(p.x<0||p.x>W)this.projs.splice(i,1);
+  }
+  for(i=this.missiles.length-1;i>=0;i--){
+   var m=this.missiles[i];m.y+=m.vy*dt;
+   o=this.other(m.owner);
+   if(m.y>=GROUND-4){
+    if(Math.abs(m.x-o.x)<40&&o.inv<=0){this.hit(m.owner,o,m.dmg,200);}
+    this.missiles.splice(i,1);continue;
+   }
+   if(m.y>H+40)this.missiles.splice(i,1);
+  }
+  var g=this.pg;g.clear();
+  for(i=0;i<this.projs.length;i++){
+   var pp=this.projs[i];
+   g.save();g.translateCanvas(pp.x,pp.y);g.rotateCanvas(pp.rot);
+   g.fillStyle(0xffffff,1);g.fillRect(-10,-13,20,26);
+   g.fillStyle(0x9aa4b2,1);g.fillRect(-8,-6,16,2);g.fillRect(-8,2,16,2);
+   g.restore();
+  }
+  for(i=0;i<this.missiles.length;i++){
+   var mm=this.missiles[i];
+   g.fillStyle(0x8a8f99,1);g.fillRect(mm.x-6,mm.y-14,12,30);
+   g.fillStyle(0xff7733,1);g.fillTriangle(mm.x-6,mm.y-14,mm.x+6,mm.y-14,mm.x,mm.y-30);
+  }
+ }
+ drawHud(){
+  var h=this.hud;h.clear();
+  var pct=this.f1.hp/100;
+  h.fillStyle(0x000000,0.55);h.fillRect(36,26,324,22);
+  h.fillStyle(pct>0.5?0x3fb950:(pct>0.25?0xd29922:0xd42b2b),1);h.fillRect(38,28,320*pct,18);
+  h.fillStyle(0x000000,0.55);h.fillRect(36,52,324,8);
+  h.fillStyle(0x388bfd,1);h.fillRect(38,54,320*(this.f1.hype/100),4);
+  var p2=this.f2.hp/100;
+  h.fillStyle(0x000000,0.55);h.fillRect(600,26,324,22);
+  h.fillStyle(p2>0.5?0x3fb950:(p2>0.25?0xd29922:0xd42b2b),1);h.fillRect(602+320*(1-p2),28,320*p2,18);
+  h.fillStyle(0x000000,0.55);h.fillRect(600,52,324,8);
+  h.fillStyle(0x388bfd,1);h.fillRect(920-320*(this.f2.hype/100),54,320*(this.f2.hype/100),4);
+  var i;
+  for(i=0;i<2;i++){h.fillStyle(i<this.f1.rounds?0xffffff:0x44506a,1);h.fillCircle(40+i*14,66,4);}
+  for(i=0;i<2;i++){h.fillStyle(i<this.f2.rounds?0xffffff:0x44506a,1);h.fillCircle(920-i*14,66,4);}
+ }
+ update(time,delta){
+  var dt=delta/1000;
+  if(this.state!=='fight'){return;}
+  if(!this.isTouch&&this.keys.T.isDown&&!this.tHeld){this.toggleAI();this.tHeld=true;}
+  if(!this.keys.T.isDown){this.tHeld=false;}
+  var f1=this.f1,f2=this.f2;
+  if(f1.hitT<=0&&f1.state!=='dash'&&f1.hp>0){
+   f1.vx=0;
+   if(this.keys.A.isDown||this.tL)f1.vx=-f1.cfg.speed;
+   if(this.keys.D.isDown||this.tR)f1.vx=f1.cfg.speed;
+   if((this.keys.W.isDown||this.tU)&&f1.onGround){f1.vy=-560;f1.onGround=false;}
+   this.handleButtons(f1,this.keys.J,this.keys.K,this.keys.L);
+  }
+  if(this.aiOn){
+   this.aiThink(dt);
+   if(f2.hitT<=0&&f2.state!=='dash'&&f2.hp>0){
+    f2.vx=0;
+    if(this.aiMove.l)f2.vx=-f2.cfg.speed;
+    if(this.aiMove.r)f2.vx=f2.cfg.speed;
+    if(this.aiMove.u&&f2.onGround){f2.vy=-560;f2.onGround=false;}
+   }
+  }else if(f2.hitT<=0&&f2.state!=='dash'&&f2.hp>0){
+   f2.vx=0;
+   if(this.cursors.left.isDown)f2.vx=-f2.cfg.speed;
+   if(this.cursors.right.isDown)f2.vx=f2.cfg.speed;
+   if(this.cursors.up.isDown&&f2.onGround){f2.vy=-560;f2.onGround=false;}
+   this.handleButtons(f2,this.kp,this.ks,this.ku);
+  }
+  this.stepF(f1,f2,dt);
+  this.stepF(f2,f1,dt);
+  this.stepProjs(dt);
+  this.drawHud();
+ }
+}
+
+class FactScene extends Phaser.Scene{
+ constructor(){super({key:'fact'});}
+ init(data){this.facts=data.facts||[];}
+ create(){
+  var self=this;
+  var g=this.add.graphics();
+  g.fillStyle(0x0b1f3a,1);g.fillRect(0,0,W,H);
+  g.fillStyle(0x3fb950,0.12);g.fillCircle(480,60,60);
+  this.add.text(W/2,60,'FACT CHECK',{fontSize:'30px',color:'#3fb950',fontStyle:'bold'}).setOrigin(0.5);
+  var y=140;
+  for(var i=0;i<this.facts.length;i++){
+   var t=this.add.text(150,y,'• '+this.facts[i],{fontSize:'16px',color:'#e6edf3',wordWrap:{width:660}});
+   y+=t.height+20;
+  }
+  function menuBtn(x,label,cb){
+   var c=self.add.container(x,460).setDepth(5);
+   var bg=self.add.graphics();
+   bg.fillStyle(0xffffff,0.1);bg.fillRoundedRect(-90,-20,180,40,10);
+   bg.lineStyle(1.5,0xffffff,0.35);bg.strokeRoundedRect(-90,-20,180,40,10);
+   var t=self.add.text(0,0,label,{fontSize:'16px',color:'#ffffff',fontStyle:'bold'}).setOrigin(0.5);
+   c.add([bg,t]);c.setSize(180,40);c.setInteractive();
+   c.on('pointerdown',cb);
+  }
+  menuBtn(360,'REMATCH (R)',function(){self.scene.start('fight');});
+  menuBtn(600,'MAIN MENU (M)',function(){self.scene.start('title');});
+  this.add.text(W/2,520,'Tap a button or use your keyboard',{fontSize:'12px',color:'#7f93ad'}).setOrigin(0.5);
+  this.input.keyboard.on('keydown-R',function(){this.scene.start('fight');},this);
+  this.input.keyboard.on('keydown-M',function(){this.scene.start('title');},this);
+ }
+}
+
+var config={
+ type:Phaser.AUTO,
+ width:W,
+ height:H,
+ parent:'game',
+ backgroundColor:'#070b14',
+ scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},
+ scene:[TitleScene,FightScene,FactScene]
+};
+new Phaser.Game(config);
+</script>
+</body>
+</html>
